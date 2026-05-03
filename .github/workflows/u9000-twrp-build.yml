@@ -26,28 +26,30 @@ jobs:
       contents: write
 
     steps:
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: false
-
       - name: Checkout U9000 files
         uses: actions/checkout@v4
-
-      - name: Show disk space
-        run: df -h
 
       - name: Install Java 8
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: "8"
+
+      - name: Fast disk cleanup
+        run: |
+          df -h
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /usr/share/dotnet \
+            /usr/local/share/boost \
+            /usr/local/share/powershell \
+            /usr/share/swift \
+            /opt/az
+          docker system prune -af || true
+          sudo apt-get clean
+          df -h
 
       - name: Install build dependencies
         run: |
