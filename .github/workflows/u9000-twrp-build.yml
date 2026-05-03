@@ -101,6 +101,15 @@ jobs:
           chmod +x "$HOME/bin/repo"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('device/alps/U9000/**', '.github/workflows/u9000-twrp-build.yml') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ github.ref_name }}-
+            ccache-${{ runner.os }}-
+
       - name: Initialize TWRP source
         run: |
           mkdir workspace
@@ -130,23 +139,52 @@ jobs:
         run: |
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
+          export USE_CCACHE=1
+          export CCACHE_DIR="$HOME/.ccache"
+          if [ -x prebuilts/misc/linux-x86/ccache/ccache ]; then
+            prebuilts/misc/linux-x86/ccache/ccache -M 5G
+            prebuilts/misc/linux-x86/ccache/ccache -z
+          fi
           lunch omni_U9000-eng
           make "${{ github.event.inputs.build_target }}image" -j"$(nproc)"
+          if [ -x prebuilts/misc/linux-x86/ccache/ccache ]; then
+            prebuilts/misc/linux-x86/ccache/ccache -s
+          fi
 
       - name: Collect outputs
+        if: always()
         run: |
           mkdir -p artifacts
-          cp "workspace/out/target/product/U9000/${{ github.event.inputs.build_target }}.img" artifacts/
-          sha256sum artifacts/* | tee artifacts/SHA256SUMS.txt
+          product_dir="workspace/out/target/product/U9000"
+          if [ -d "$product_dir" ]; then
+            find "$product_dir" -maxdepth 1 -type f \( \
+              -name "${{ github.event.inputs.build_target }}.img" -o \
+              -name "boot.img" -o \
+              -name "ramdisk*.img" -o \
+              -name "*.id" -o \
+              -name "installed-files*.txt" \
+            \) -exec cp {} artifacts/ \;
+            find "$product_dir/recovery/root" -maxdepth 3 -type f 2>/dev/null | sort > artifacts/recovery-root-files.txt || true
+          fi
+          {
+            echo "run_id=${{ github.run_id }}"
+            echo "target=${{ github.event.inputs.build_target }}"
+            echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            find artifacts -maxdepth 1 -type f -printf "%f %s bytes\n" | sort
+          } | tee artifacts/SIZES.txt
+          find artifacts -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0r sha256sum | tee artifacts/SHA256SUMS.txt
           ls -lh artifacts
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: U9000-${{ github.event.inputs.build_target }}-${{ github.run_id }}
           path: artifacts/*
 
       - name: Publish release
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: u9000-twrp-${{ github.run_id }}
