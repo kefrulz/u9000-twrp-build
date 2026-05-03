@@ -44,7 +44,6 @@ BOARD_FLASH_BLOCK_SIZE := 131072
 
 # File systems
 TARGET_USERIMAGES_USE_EXT4 := true
-TARGET_USERIMAGES_USE_F2FS := true
 BOARD_HAS_LARGE_FILESYSTEM := true
 
 # Recovery
@@ -56,14 +55,14 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_HAS_MTP := true
-TW_INCLUDE_NTFS_3G := true
 TW_NO_EXFAT_FUSE := true
-TW_EXTRA_LANGUAGES := true
+TW_EXCLUDE_SUPERSU := true
+TW_EXCLUDE_TWRPAPP := true
+TW_EXCLUDE_ENCRYPTED_BACKUPS := true
 TW_DEFAULT_LANGUAGE := en
 
-# Android 7-era full-disk encryption is present on stock /data. Leave crypto in,
-# but expect the first build to need testing before trusting data decryption.
-TW_INCLUDE_CRYPTO := true
+# Keep the first build small enough for the 16 MiB recovery partition. Stock
+# /data is encrypted, but crypto support pulls in too much for this partition.
 TW_INTERNAL_STORAGE_PATH := "/data/media/0"
 TW_INTERNAL_STORAGE_MOUNT_POINT := "data"
 RECOVERY_SDCARD_ON_DATA := true
