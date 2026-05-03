@@ -22,6 +22,9 @@ jobs:
     container:
       image: ubuntu:20.04
       options: --privileged
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
     permissions:
       contents: write
 
@@ -29,7 +32,7 @@ jobs:
       - name: Prepare container basics
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y sudo ca-certificates curl git python3
+          apt-get install -y sudo ca-certificates curl git python3
 
       - name: Checkout U9000 files
         uses: actions/checkout@v4
@@ -45,8 +48,9 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo -E apt-get update
+          sudo -E apt-get install -y tzdata
+          sudo -E apt-get install -y \
             bc bison build-essential ccache cpio curl flex g++-multilib gcc-multilib \
             git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev \
             libc6-dev-i386 libgl1-mesa-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
