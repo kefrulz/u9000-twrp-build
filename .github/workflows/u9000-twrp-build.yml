@@ -18,18 +18,24 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+      options: --privileged
     permissions:
       contents: write
 
     steps:
+      - name: Prepare container basics
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y sudo ca-certificates curl git python3
+
       - name: Checkout U9000 files
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
-          df -h
+      - name: Show disk space
+        run: df -h
 
       - name: Install Java 8
         uses: actions/setup-java@v4
