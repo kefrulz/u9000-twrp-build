@@ -57,7 +57,7 @@ jobs:
             bc bison build-essential ccache cpio curl flex g++-multilib gcc-multilib
             git gnupg gperf imagemagick lib32ncurses-dev lib32ncurses5-dev
             lib32readline-dev lib32z1-dev libc6-dev-i386 libgl1-mesa-dev
-            liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2
+            liblz4-tool libncurses5 libncurses5-dev libtinfo5 libsdl1.2-dev libssl-dev libxml2
             libxml2-utils lzop pngcrush python3 rsync schedtool squashfs-tools
             unzip wget x11proto-core-dev xsltproc zip zlib1g-dev
           )
@@ -70,6 +70,12 @@ jobs:
             fi
           done
           sudo -E apt-get install -y "${available[@]}"
+          if ! ldconfig -p | grep -q 'libncurses.so.5'; then
+            ncurses6="$(ldconfig -p | awk '/libncurses.so.6/{print $NF; exit}')"
+            if [ -n "$ncurses6" ]; then
+              sudo ln -sf "$ncurses6" /usr/lib/x86_64-linux-gnu/libncurses.so.5
+            fi
+          fi
 
       - name: Build Python 2.7
         run: |
