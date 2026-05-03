@@ -18,10 +18,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:20.04
-      options: --privileged
+    runs-on: ubuntu-22.04
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: Etc/UTC
@@ -29,10 +26,16 @@ jobs:
       contents: write
 
     steps:
-      - name: Prepare container basics
-        run: |
-          apt-get update
-          apt-get install -y sudo ca-certificates curl git python3
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
 
       - name: Checkout U9000 files
         uses: actions/checkout@v4
@@ -50,14 +53,40 @@ jobs:
         run: |
           sudo -E apt-get update
           sudo -E apt-get install -y tzdata
-          sudo -E apt-get install -y \
-            bc bison build-essential ccache cpio curl flex g++-multilib gcc-multilib \
-            git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev \
-            libc6-dev-i386 libgl1-mesa-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
-            libssl-dev libxml2 libxml2-utils lzop pngcrush python2 python3 rsync \
-            schedtool squashfs-tools unzip wget x11proto-core-dev \
-            xsltproc zip zlib1g-dev
-          sudo ln -sf /usr/bin/python2 /usr/bin/python
+          packages=(
+            bc bison build-essential ccache cpio curl flex g++-multilib gcc-multilib
+            git gnupg gperf imagemagick lib32ncurses-dev lib32ncurses5-dev
+            lib32readline-dev lib32z1-dev libc6-dev-i386 libgl1-mesa-dev
+            liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2
+            libxml2-utils lzop pngcrush python3 rsync schedtool squashfs-tools
+            unzip wget x11proto-core-dev xsltproc zip zlib1g-dev
+          )
+          available=()
+          for package in "${packages[@]}"; do
+            if apt-cache show "$package" >/dev/null 2>&1; then
+              available+=("$package")
+            else
+              echo "Skipping unavailable package: $package"
+            fi
+          done
+          sudo -E apt-get install -y "${available[@]}"
+
+      - name: Build Python 2.7
+        run: |
+          if command -v python2 >/dev/null 2>&1; then
+            sudo ln -sf "$(command -v python2)" /usr/local/bin/python
+            exit 0
+          fi
+          sudo -E apt-get install -y libffi-dev libbz2-dev libreadline-dev libsqlite3-dev make
+          curl -fsSL https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz -o Python-2.7.18.tgz
+          tar -xzf Python-2.7.18.tgz
+          cd Python-2.7.18
+          ./configure --prefix="$HOME/python2"
+          make -j"$(nproc)"
+          make install
+          echo "$HOME/python2/bin" >> "$GITHUB_PATH"
+          sudo ln -sf "$HOME/python2/bin/python2.7" /usr/local/bin/python
+          sudo ln -sf "$HOME/python2/bin/python2.7" /usr/local/bin/python2
 
       - name: Install repo
         run: |
