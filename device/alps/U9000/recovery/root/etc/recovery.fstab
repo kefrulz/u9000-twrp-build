@@ -1,0 +1,29 @@
+# TWRP fstab for the U9000 rugged scanner.
+# Derived from the stock Android 7.0 MTK recovery fstab. AVB/dm-verity flags are
+# intentionally omitted so recovery can mount partitions without enforcing stock
+# verified-boot policy.
+
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/system    /system       ext4    ro                                                        wait
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/userdata  /data         ext4    noatime,nosuid,nodev,noauto_da_alloc,discard              wait,check,resize,encryptable=/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/metadata
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/cache     /cache        ext4    noatime,nosuid,nodev,noauto_da_alloc,discard              wait,check
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/protect1  /protect_f    ext4    noatime,nosuid,nodev,noauto_da_alloc,commit=1,nodelalloc  wait,check
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/protect2  /protect_s    ext4    noatime,nosuid,nodev,noauto_da_alloc,commit=1,nodelalloc  wait,check
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/nvdata    /nvdata       ext4    noatime,nosuid,nodev,noauto_da_alloc,discard              wait,check
+
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/frp       /persistent   emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/nvram     /nvram        emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/proinfo   /proinfo      emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/lk        /bootloader   emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/para      /misc         emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/boot      /boot         emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/recovery  /recovery     emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/logo      /logo         emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/expdb     /expdb        emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/secro     /secro        emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/seccfg    /seccfg       emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/tee1      /tee1         emmc    defaults                                                  defaults
+/dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/tee2      /tee2         emmc    defaults                                                  defaults
+
+/devices/mtk-msdc.0/11230000.msdc0*                            /external_sd  vfat    defaults                                                  voldmanaged=sdcard0:auto
+/devices/mtk-msdc.0/11240000.msdc1*                            /external_sd  auto    defaults                                                  voldmanaged=sdcard1:auto,storage
+/devices/platform/mt_usb*                                      /usb-otg      vfat    defaults                                                  voldmanaged=usbotg:auto

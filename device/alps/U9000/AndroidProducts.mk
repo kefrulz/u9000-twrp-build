@@ -1,0 +1,5 @@
+PRODUCT_MAKEFILES := \
+    $(LOCAL_DIR)/omni_U9000.mk
+
+COMMON_LUNCH_CHOICES := \
+    omni_U9000-eng

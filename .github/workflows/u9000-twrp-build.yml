@@ -1,0 +1,115 @@
+name: Build U9000 TWRP
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: TWRP manifest URL
+        required: true
+        default: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni
+      manifest_branch:
+        description: TWRP manifest branch
+        required: true
+        default: twrp-8.1
+      build_target:
+        description: Build target
+        required: true
+        default: recovery
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout U9000 files
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+          df -h
+
+      - name: Install Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "8"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential ccache cpio curl flex g++-multilib gcc-multilib \
+            git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev \
+            libc6-dev-i386 libgl1-mesa-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
+            libssl-dev libxml2 libxml2-utils lzop pngcrush python2 python3 rsync \
+            schedtool squashfs-tools unzip wget x11proto-core-dev \
+            xsltproc zip zlib1g-dev
+          sudo ln -sf /usr/bin/python2 /usr/bin/python
+
+      - name: Install repo
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Initialize TWRP source
+        run: |
+          mkdir workspace
+          cd workspace
+          git config --global user.name "u9000-builder"
+          git config --global user.email "u9000-builder@example.invalid"
+          repo init --depth=1 -u "${{ github.event.inputs.manifest_url }}" -b "${{ github.event.inputs.manifest_branch }}"
+
+      - name: Sync TWRP source
+        working-directory: workspace
+        run: |
+          repo sync -c --no-tags --no-clone-bundle --force-sync -j"$(nproc)"
+
+      - name: Install U9000 device tree
+        run: |
+          mkdir -p workspace/device/alps
+          rsync -a device/alps/U9000/ workspace/device/alps/U9000/
+          find workspace/device/alps/U9000 -maxdepth 4 -type f | sort
+
+      - name: Add swap
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
+
+      - name: Build recovery image
+        working-directory: workspace
+        run: |
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch omni_U9000-eng
+          make "${{ github.event.inputs.build_target }}image" -j"$(nproc)"
+
+      - name: Collect outputs
+        run: |
+          mkdir -p artifacts
+          cp "workspace/out/target/product/U9000/${{ github.event.inputs.build_target }}.img" artifacts/
+          sha256sum artifacts/* | tee artifacts/SHA256SUMS.txt
+          ls -lh artifacts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: U9000-${{ github.event.inputs.build_target }}-${{ github.run_id }}
+          path: artifacts/*
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: u9000-twrp-${{ github.run_id }}
+          name: U9000 TWRP ${{ github.run_id }}
+          body: |
+            U9000 custom recovery build.
+
+            Manifest: ${{ github.event.inputs.manifest_url }}
+            Branch: ${{ github.event.inputs.manifest_branch }}
+            Target: ${{ github.event.inputs.build_target }}.img
+          files: artifacts/*
